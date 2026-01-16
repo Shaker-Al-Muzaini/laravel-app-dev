@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravel-worker
+  labels:
+    app: laravel-app
+    role: worker
+spec:
+  selector:
+    matchLabels:
+      app: laravel-app
+      role: worker
+
+  template:
+    metadata:
+      labels:
+        app: laravel-app
+        role: worker
+
+    spec:
+
+      initContainers:
+        - name: run-migrations
+          image: laravel-application-local-image-v5:latest
+          imagePullPolicy: Never
+          workingDir: /var/www
+          envFrom:
+            - secretRef:
+                name: laravel-env-secret
+          command:
+            - sh
+            - -c
+            - |
+              php artisan migrate --force
+
+      containers:
+        - name: worker
+          image: laravel-application-local-image-v5:latest
+          imagePullPolicy: Never
+          workingDir: /var/www
+          command:
+            - php
+            - /var/www/artisan
+            - queue:work
+            - --sleep=3
+            - --tries=3
+            - --timeout=60
+            - --queue=default
+          envFrom:
+            - secretRef:
+                name: laravel-env-secret
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+      restartPolicy: Always

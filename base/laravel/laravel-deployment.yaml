@@ -14,36 +14,65 @@ spec:
       labels:
         app: laravel
     spec:
-      imagePullSecrets:
-        - name: ecr-secret
-      initContainers:
-        - name: fix-storage-permissions
-          image: busybox
-          command: ["sh", "-c", "chown -R 1000:1000 /var/www/storage"]
-          volumeMounts:
-            - name: laravel-storage
-              mountPath: /var/www/storage
-      volumes: #This part is declaring the available volumes for the whole pod (not container-specific):
+      volumes:
         - name: nginx-config
-          configMap: #this will load the nginx configuration from a ConfigMap file
+          configMap:
             name: laravel-nginx-config
-        - name: laravel-storage
-          persistentVolumeClaim:
-            claimName: laravel-storage-pvc #"Please connect this volume to the storage defined by the PVC named laravel-storage-pvc
+
       containers:
-        - name: php-fpm
-          image: 043309367638.dkr.ecr.us-east-1.amazonaws.com/laravel-k8s:latest
-          ports:
-            - containerPort: 9000
-          env:
-            - name: DB_HOST
-              value: mysql
+        - name: laravel
+          image: laravel-application-local-image-v5:latest
+          imagePullPolicy: Never
+
           envFrom:
             - secretRef:
-                name: laravel-secrets
-          volumeMounts: # where to mount laravel-storage inside the container:
-            - name: laravel-storage
-              mountPath: /var/www/storage
+                name: laravel-env-secret
+
+          command: ["php-fpm", "-F"]
+
+            # Liveness Probe - Simple TCP check for PHP-FPM process health
+
+          livenessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          
+          # Readiness Probe - TCP check that PHP-FPM is ready to handle requests
+          # More frequent checks since this affects traffic routing
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+          
+          # Startup Probe - Quick TCP check during container startup
+          startupProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 5          # More frequent during startup
+            timeoutSeconds: 3
+            failureThreshold: 12      # 12 * 5s = 1 minute max startup
+            successThreshold: 1
+          
+          ports:
+            - containerPort: 9000
+
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "500m"
+            limits:
+              memory: "512Mi"
+              cpu: "1"
+
         - name: nginx
           image: nginx:alpine
           ports:
@@ -51,3 +80,56 @@ spec:
           volumeMounts:
             - name: nginx-config
               mountPath: /etc/nginx/conf.d
+              
+            # Liveness Probe - Uses /health/live endpoint    
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 80
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 45    # Wait for both containers to be ready
+            periodSeconds: 15          # Less frequent for liveness
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          
+          # Readiness Probe - Uses /health/ready endpoint  
+          # Tests all dependencies (DB, Redis, Cache, etc.)
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 80
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 20    # Wait for Laravel to initialize
+            periodSeconds: 10          # Frequent checks for traffic routing
+            timeoutSeconds: 8          # Longer timeout for dependency checks
+            failureThreshold: 3
+            successThreshold: 1
+          
+          # Startup Probe - Uses /health/startup endpoint
+          # Tests application initialization and configuration loading
+          startupProbe:
+            httpGet:
+              path: /health/startup
+              port: 80
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24       # 24 * 5s = 2 minutes max startup
+            successThreshold: 1
+          
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+    
