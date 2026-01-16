@@ -1,1 +1,1 @@
-# laravel-gitops-k8s
+# laravel-gitops
