@@ -6,6 +6,8 @@ resources:
   - laravel-env-secret.yaml
   - laravel-worker.yaml
   - laravel-ingress.yaml
+  - laravel-hpa.yaml
+  - laravel-worker-hpa.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
