@@ -11,7 +11,7 @@ spec:
     name: laravel-app  # Matches your existing deployment name
   
   # REPLICA LIMITS: Define the scaling boundaries
-  minReplicas: 2          # Minimum 2 pods for high availability (never scale below this)
+  minReplicas: 1          # Minimum 1 pods  for high availability (never scale below this)
   maxReplicas: 10         # Maximum 10 pods to prevent resource exhaustion
   
   # SCALING TRIGGERS: When HPA will add/remove pods
