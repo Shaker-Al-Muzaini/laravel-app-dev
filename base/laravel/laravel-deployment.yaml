@@ -21,7 +21,7 @@ spec:
 
       containers:
         - name: laravel
-          image: laravel-application-local-image-v5:latest
+          image: 902085629324.dkr.ecr.us-east-2.amazonaws.com/laravel-app-k8s:latest
           imagePullPolicy: Never
 
           envFrom:
