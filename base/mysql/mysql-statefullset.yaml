@@ -1,6 +1,7 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
+  namespace: laravel-app
   name: mysql
   
 spec:
@@ -62,4 +63,4 @@ spec:
         resources:
           requests:
             storage: 10Gi
-        storageClassName: standard-retain
+        storageClassName: gp2
