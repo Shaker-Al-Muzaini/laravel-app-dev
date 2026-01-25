@@ -5,35 +5,50 @@ metadata:
 
 data:
   default.conf: |
-    server {
-        listen 80;
-        server_name _;
+   server {
+    listen 80;
+    server_name _;
 
-        root /var/www/html/public;
-        index index.php index.html;
+    root /var/www/html/public;
+    index index.php index.html;
 
-        # Storage files
-        location /storage/ {
-            alias /var/www/html/storage/app/public/;
-            expires 1y;
-            add_header Cache-Control "public, immutable";
-            try_files $uri =404;
-        }
+    # Storage files
+    location /storage/ {
+        alias /var/www/html/storage/app/public/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
 
-        # Main Laravel handler
-        location / {
-            try_files $uri $uri/ /index.php?$query_string;
-        }
+    # Main Laravel handler
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
 
-        # PHP-FPM
-        location ~ \.php$ {
-            include fastcgi_params;
-            fastcgi_pass 127.0.0.1:9000;
-            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-            fastcgi_param DOCUMENT_ROOT $document_root;
+    # PHP-FPM
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $document_root;
+        fastcgi_connect_timeout 300;
+        fastcgi_send_timeout 300;
+        fastcgi_read_timeout 300;
+    }
 
-            fastcgi_read_timeout 300;
-            fastcgi_send_timeout 300;
-            fastcgi_connect_timeout 60;
-        }
+    # ---- IMPORTANT ----
+    # Kubernetes Health Checks
+    location /health/live {
+        default_type text/plain;
+        return 200 'OK';
+    }
+
+    location /health/ready {
+        default_type text/plain;
+        return 200 'OK';
+    }
+
+    location /health/startup {
+        default_type text/plain;
+        return 200 'OK';
     }
