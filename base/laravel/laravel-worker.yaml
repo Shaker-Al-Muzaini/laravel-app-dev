@@ -19,42 +19,54 @@ spec:
 
     spec:
 
+      ########################################
+      # 🔥 Shared volume to store Laravel code
+      ########################################
+      volumes:
+        - name: app-code
+          emptyDir: {}
+
+      ########################################
+      # 🔥 initContainer: copies Laravel code
+      ########################################
       initContainers:
-        - name: run-migrations
+        - name: copy-app
           image: 902085629324.dkr.ecr.us-east-2.amazonaws.com/laravel-app-k8s:latest
-          imagePullPolicy: Always
-          workingDir: /var/www
-          envFrom:
-            - secretRef:
-                name: laravel-env-secret
           command:
             - sh
             - -c
             - |
-              php artisan migrate --force
+              echo "Copying Laravel app..." ;
+              cp -R /var/www/html/* /var/www/ ;
+              cp -R /var/www/html/.[!.]* /var/www/ 2>/dev/null || true ;
+              echo "Copy done."
+          volumeMounts:
+            - name: app-code
+              mountPath: /var/www
+          envFrom:
+            - secretRef:
+                name: laravel-env-secret
 
+      ########################################
+      # 🔥 Worker container
+      ########################################
       containers:
         - name: worker
           image: 902085629324.dkr.ecr.us-east-2.amazonaws.com/laravel-app-k8s:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           workingDir: /var/www
           command:
             - php
-            - /var/www/artisan
+            - artisan
             - queue:work
             - --sleep=3
             - --tries=3
             - --timeout=60
-            - --queue=default
+          volumeMounts:
+            - name: app-code
+              mountPath: /var/www
           envFrom:
             - secretRef:
                 name: laravel-env-secret
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
 
       restartPolicy: Always
