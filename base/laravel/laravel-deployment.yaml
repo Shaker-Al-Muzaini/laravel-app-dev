@@ -9,11 +9,17 @@ spec:
   selector:
     matchLabels:
       app: laravel
+
   template:
     metadata:
       labels:
         app: laravel
+
     spec:
+
+      ########################################
+      # 🔥 shared volume containing Laravel code
+      ########################################
       volumes:
         - name: nginx-config
           configMap:
@@ -23,7 +29,7 @@ spec:
           emptyDir: {}
 
       ########################################
-      # 🔥 initContainer: ينسخ كود Laravel
+      # 🔥 initContainer: copies Laravel code
       ########################################
       initContainers:
         - name: copy-app
@@ -32,16 +38,16 @@ spec:
             - sh
             - -c
             - |
-              echo "Copying Laravel app..." ;
-              cp -R /var/www/html/* /var/www/ ;
-              cp -R /var/www/html/.[!.]* /var/www/ 2>/dev/null || true ;
-              echo "Copy done."
+              echo "Copying Laravel app...";
+              cp -R /var/www/* /var/www-out/ 2>/dev/null || true;
+              cp -R /var/www/.[!.]* /var/www-out/ 2>/dev/null || true;
+              echo "Copy done.";
           volumeMounts:
             - name: app-code
-              mountPath: /var/www
+              mountPath: /var/www-out
 
       ########################################
-      # 🔥 Laravel / PHP-FPM
+      # 🔥 Laravel - PHP-FPM container
       ########################################
       containers:
         - name: laravel
@@ -52,6 +58,7 @@ spec:
             - secretRef:
                 name: laravel-env-secret
 
+          workingDir: /var/www
           command: ["php-fpm", "-F"]
 
           volumeMounts:
@@ -80,7 +87,7 @@ spec:
             periodSeconds: 5
 
         ########################################
-        # 🔥 NGINX
+        # 🔥 NGINX (serves public/)
         ########################################
         - name: nginx
           image: nginx:alpine
@@ -88,6 +95,7 @@ spec:
           volumeMounts:
             - name: nginx-config
               mountPath: /etc/nginx/conf.d
+
             - name: app-code
               mountPath: /var/www
 
@@ -98,10 +106,12 @@ spec:
             httpGet:
               path: /health/live
               port: 80
+
           readinessProbe:
             httpGet:
               path: /health/ready
               port: 80
+
           startupProbe:
             httpGet:
               path: /health/startup
