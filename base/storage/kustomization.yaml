@@ -3,4 +3,5 @@ kind: Kustomization
 
 resources:
    - retain-sc.yaml
+   - gp2-sc.yaml
    
