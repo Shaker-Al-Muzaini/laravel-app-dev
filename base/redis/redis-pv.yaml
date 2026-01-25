@@ -7,6 +7,6 @@ spec:
     storage: 1Gi
   accessModes:
     - ReadWriteOnce
-  storageClassName: standard-retain
+  storageClassName: gp2
   hostPath:
     path: /tmp/redis-data

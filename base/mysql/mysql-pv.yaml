@@ -7,6 +7,6 @@ spec:
     storage: 10Gi
   accessModes:
     - ReadWriteOnce
-  storageClassName: standard-retain
+  storageClassName: gp2
   hostPath:
     path: /tmp/mysql-data
