@@ -1,7 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  
   name: laravel-app
   labels:
     app: laravel
@@ -20,7 +19,14 @@ spec:
           configMap:
             name: laravel-nginx-config
 
+        # 🔥 هذا هو المهم — مجلد مشترك بين nginx و php-fpm
+        - name: app-code
+          emptyDir: {}
+
       containers:
+        # --------------------
+        # PHP-FPM / Laravel
+        # --------------------
         - name: laravel
           image: 902085629324.dkr.ecr.us-east-2.amazonaws.com/laravel-app-k8s:latest
           imagePullPolicy: Always
@@ -31,106 +37,55 @@ spec:
 
           command: ["php-fpm", "-F"]
 
-            # Liveness Probe - Simple TCP check for PHP-FPM process health
+          volumeMounts:
+            - name: app-code
+              mountPath: /var/www    # ← هنا يتم وضع كود Laravel
 
+          ports:
+            - containerPort: 9000
+
+          # Probes (نفس التي كتبتها أنت)
           livenessProbe:
             tcpSocket:
               port: 9000
             initialDelaySeconds: 30
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
-            successThreshold: 1
-          
-          # Readiness Probe - TCP check that PHP-FPM is ready to handle requests
-          # More frequent checks since this affects traffic routing
           readinessProbe:
             tcpSocket:
               port: 9000
             initialDelaySeconds: 10
             periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 3
-            successThreshold: 1
-          
-          # Startup Probe - Quick TCP check during container startup
           startupProbe:
             tcpSocket:
               port: 9000
             initialDelaySeconds: 5
-            periodSeconds: 5          # More frequent during startup
-            timeoutSeconds: 3
-            failureThreshold: 12      # 12 * 5s = 1 minute max startup
-            successThreshold: 1
-          
-          ports:
-            - containerPort: 9000
+            periodSeconds: 5
 
-          resources:
-            requests:
-              memory: "256Mi"
-              cpu: "500m"
-            limits:
-              memory: "512Mi"
-              cpu: "1"
-
+        # --------------------
+        # NGINX
+        # --------------------
         - name: nginx
           image: nginx:alpine
           ports:
             - containerPort: 80
+
           volumeMounts:
             - name: nginx-config
               mountPath: /etc/nginx/conf.d
-              
-            # Liveness Probe - Uses /health/live endpoint    
+
+            # 🔥 يجب أن يرى نفس كود Laravel
+            - name: app-code
+              mountPath: /var/www
+
           livenessProbe:
             httpGet:
               path: /health/live
               port: 80
-              httpHeaders:
-                - name: Host
-                  value: localhost
-            initialDelaySeconds: 45    # Wait for both containers to be ready
-            periodSeconds: 15          # Less frequent for liveness
-            timeoutSeconds: 5
-            failureThreshold: 3
-            successThreshold: 1
-          
-          # Readiness Probe - Uses /health/ready endpoint  
-          # Tests all dependencies (DB, Redis, Cache, etc.)
           readinessProbe:
             httpGet:
               path: /health/ready
               port: 80
-              httpHeaders:
-                - name: Host
-                  value: localhost
-            initialDelaySeconds: 20    # Wait for Laravel to initialize
-            periodSeconds: 10          # Frequent checks for traffic routing
-            timeoutSeconds: 8          # Longer timeout for dependency checks
-            failureThreshold: 3
-            successThreshold: 1
-          
-          # Startup Probe - Uses /health/startup endpoint
-          # Tests application initialization and configuration loading
           startupProbe:
             httpGet:
               path: /health/startup
               port: 80
-              httpHeaders:
-                - name: Host
-                  value: localhost
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 24       # 24 * 5s = 2 minutes max startup
-            successThreshold: 1
-          
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "250m"
-            limits:
-              memory: "256Mi"
-              cpu: "500m"
-    
