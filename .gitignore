@@ -3,5 +3,10 @@
 base/secrets/.env 
 #prod
 base/secrets/laravel-secrets.yaml
+base/laravel/laravel-env-secret.yaml
+base/mysql/mysql-secrets.yaml
 kubeseal
+aws
+awscliv2.zip
 *.tar.gz
+LICENSE
