@@ -33,7 +33,7 @@ spec:
       ########################################
       initContainers:
         - name: copy-app
-          image: 902085629324.dkr.ecr.us-east-2.amazonaws.com/laravel-app-k8s:latest
+          image: 902085629324.dkr.ecr.us-east-2.amazonaws.com/laravel-app-k8s:20260128-210906-2673f0d
           command:
             - sh
             - -c
@@ -51,7 +51,7 @@ spec:
       ########################################
       containers:
         - name: laravel
-          image: 902085629324.dkr.ecr.us-east-2.amazonaws.com/laravel-app-k8s:latest
+          image: 902085629324.dkr.ecr.us-east-2.amazonaws.com/laravel-app-k8s:20260128-210906-2673f0d
           imagePullPolicy: Always
 
           envFrom:
